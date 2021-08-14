@@ -2,25 +2,30 @@
 
 # Imports {{{
 # builtins
+import subprocess
+from subprocess import PIPE
+import contextlib
+import logging
 import pathlib
-from typing import Collection, Mapping
-from urllib.parse import urlparse, unquote
+import re
+from typing import BinaryIO, Collection, Literal
+from urllib.parse import urlparse
 
 # 3rd party
 import requests
-from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 # local modules
-from khdownload.constants import DEFAULT_WEIGHTS
 
 # }}}
 
 
-def normalize_url(url, parent):
-    """
-    Convert a relative URL to an absolute one.
+log = logging.getLogger(__name__)
 
-    Converts the URL by looking at an existing, related URL.
+
+def normalize_url(url: str, parent: str):
+    """
+    Convert a relative URL to an absolute one, using an existing absolute URL.
     """
     parsed = urlparse(url)
 
@@ -31,44 +36,58 @@ def normalize_url(url, parent):
     return url
 
 
-def scrape_album(album_url: str):
-    def get_album_title(page: BeautifulSoup):
-        header = page.select_one("#EchoTopic h2")
-        return header.getText()
-
-    def get_songlist(page: BeautifulSoup):
-        selector = "#songlist a"
-        links = page.select(selector)
-
-        songs = {unquote(a.get("href")) for a in links}
-        normalized = (normalize_url(url, album_url) for url in songs)
-
-        return sorted(normalized)
-
-    resp = requests.get(album_url)
-    scraped = BeautifulSoup(resp.text, "html.parser")
-
-    title = get_album_title(scraped)
-    songs = get_songlist(scraped)
-
-    return (title, songs)
+@contextlib.contextmanager
+def StreamTqdm(
+    output: BinaryIO,
+    input: requests.Response,
+    filemode: Literal["read", "write"] = "write",
+    **kwargs,
+):
+    """
+    Convenience method for showing the progress of a stream being saved.
+    """
+    file_size = int(input.headers.get("Content-Length", 0))  # in bytes
+    with tqdm.wrapattr(output, filemode, total=file_size, **kwargs) as pbar:
+        try:
+            yield pbar
+        finally:
+            ...
 
 
-def get_files_from_song_page(page: str):
-    resp = requests.get(page)
-    scraped = BeautifulSoup(resp.text, "html.parser")
+def check_disposition_filename(resp: requests.Response):
+    disposition = resp.headers.get("Content-Disposition", None)
+    if disposition is not None:
+        regex = r"filename=\"(.+)\""
+        parsed = re.search(regex, disposition)
+        return parsed.group(1) if parsed else None
 
-    selector = "a .songDownloadLink"
-    links = scraped.select(selector)
-    files = {link.parent.get("href") for link in links}
-
-    return files
+    return None
 
 
-def get_best_file(files: Collection[str], weights: Mapping[str, int] = DEFAULT_WEIGHTS):
-    def lookup_weight(file: str):
-        return weights[pathlib.Path(file).suffix]
+def convert_files(files: Collection[pathlib.Path], filetype: str, delete=True):
+    """
+    Convert a batch of files to a given filetype.
 
-    ordered = reversed(sorted(files, key=lookup_weight))
-    chosen = next(ordered)
-    return chosen
+    The filetype should start with a period. Pass `delete=False` to keep the
+    original file after converting.
+    """
+    num = len(files)
+    type = filetype.lstrip(".")
+    log.info(f"Converting {num} file{'s' if num > 1 else ''} to {type}....")
+
+    def build_cmd(file):
+        new = file.with_suffix(filetype)
+        cmd = ["ffmpeg", "-i", file, "-f", type, new]
+        return cmd
+
+    tasks = {
+        file: subprocess.Popen(build_cmd(file), text=True, stdout=PIPE, stderr=PIPE)
+        for file in files
+    }
+
+    for file, task in tasks.items():
+        task.wait()
+        if delete:
+            file.unlink()
+
+    return tasks

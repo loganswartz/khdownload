@@ -2,6 +2,7 @@
 
 # Imports {{{
 # builtins
+import logging
 import pathlib
 import sys
 
@@ -9,9 +10,17 @@ import sys
 import click
 
 # local modules
-from khdownload.download import download_album
+from khdownload import log
+from khdownload.types import Album
+from khdownload.utils import convert_files
 
 # }}}
+
+
+log.setLevel(logging.INFO)
+sh = logging.StreamHandler(sys.stdout)
+sh.setLevel(logging.DEBUG)
+log.addHandler(sh)
 
 
 @click.command(context_settings=dict(help_option_names=["-h", "--help"]))
@@ -28,10 +37,10 @@ from khdownload.download import download_album
     "--output",
     help="Path specifying where the albums should be saved",
     type=click.Path(file_okay=False, path_type=pathlib.Path),
-    default=pathlib.Path("."),
+    default=None,
 )
 @click.option(
-    "-c", "--convert-m4a", help="Convert any .m4a files to flac", is_flag=True
+    "-c", "--convert-m4a", help="Convert any .m4a files to .flac", is_flag=True
 )
 def cli(urls, list_file, output, convert_m4a):
     urls = set(urls)
@@ -43,5 +52,13 @@ def cli(urls, list_file, output, convert_m4a):
         print("Please specify a URL.")
         sys.exit(1)
 
-    for album_url in urls:
-        download_album(album_url, folder=output)
+    for url in urls:
+        album = Album(url)
+        succeeded, failed = album.download(folder=output)
+        if convert_m4a:
+            results = convert_files(succeeded, ".flac")
+
+        if failed:
+            log.error("Some songs failed to download:")
+            for song in failed:
+                log.error(f"  {song.name}")
