@@ -113,10 +113,10 @@ class Song(object):
         type: str = None,
         hide_progress: bool = False,
     ):
-        if type is None:
-            file = self.best_file
+        if type is not None:
+            file = self.available[type]
         else:
-            file = self.available[self.best_type]
+            file = self.best_file
 
         path = file.download(folder, hide_progress=hide_progress)
         self.local = path

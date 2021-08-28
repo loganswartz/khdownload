@@ -39,10 +39,11 @@ log.addHandler(sh)
     type=click.Path(file_okay=False, path_type=pathlib.Path),
     default=None,
 )
+@click.option("-t", "--type", help="Download a specific filetype")
 @click.option(
     "-c", "--convert-m4a", help="Convert any .m4a files to .flac", is_flag=True
 )
-def cli(urls, list_file, output, convert_m4a):
+def cli(urls, list_file, output, type, convert_m4a):
     urls = set(urls)
     if list_file:
         urls = urls.union(
@@ -54,7 +55,7 @@ def cli(urls, list_file, output, convert_m4a):
 
     for url in urls:
         album = Album(url)
-        succeeded, failed = album.download(folder=output)
+        succeeded, failed = album.download(folder=output, type=type)
         if convert_m4a:
             results = convert_files(succeeded, ".flac")
 

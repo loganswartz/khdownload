@@ -2,41 +2,37 @@
 Automatically download entire albums from khinsider from the commandline.
 
 ```bash
-usage: khdownload [-h] [-f FILE] [-o OUTPUT] [URL [URL ...]]
+Usage: khdownload [OPTIONS] [URLS]...
 
-positional arguments:
-  URL                   URLs of albums to download
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -f FILE, --file FILE  Path to a text file containing album URLs (separated
-                        by newlines)
-  -o OUTPUT, --output OUTPUT
-                        Path specifying where the albums should be saved
+Options:
+  -f, --from-file FILENAME  Path to a text file containing album URLs
+                            (separated by newlines)
+  -o, --output DIRECTORY    Path specifying where the albums should be saved
+  -t, --type TEXT           Download a specific filetype
+  -c, --convert-m4a         Convert any .m4a files to .flac
+  -h, --help                Show this message and exit.
 ```
 
 ## About
-This script downloads all the songs of a particular filetype in any given album from [downloads.khinsider.com](downloads.khinsider.com). It automatically grabs the best filetype available, and shows the progress of the download as it goes. It automatically scrapes the title of the album and the songs, and downloads the songs into a folder named after the album.
+This script downloads all the songs of a particular filetype in any given album
+from [downloads.khinsider.com](downloads.khinsider.com). It automatically grabs
+the best filetype available, and shows the progress of the download as it goes.
+It automatically scrapes the title of the album and the songs, and downloads
+the songs into a folder named after the album.
 
 ## Installation
-First install the required Python modules with:
 ```bash
-~/khdownload $ pip3 install -r requirements.txt
-```
-To install, symlink the `khdownload` file into a location in your path, like `~/.local/bin`.
-While in the cloned repo:
-```bash
-~/khdownload $ ln -s ~/khdownload/khdownload ~/.local/bin/khdownload
+git clone git@github.com:loganswartz/khdownload.git && pip3 install khdownload
 ```
 
 ## Usage
 ```bash
 # download an album
-~ $ khdownload 'https://downloads.khinsider.com/game-soundtracks/album/pokemon-ruby-sapphire-music-super-complete'
+~ $ khdownload 'https://downloads.khinsider.com/game-soundtracks/album/dai-gyakuten-saiban-naruhodou-ryuunosuke-no-bouken-gekiban-ongaku-daizenshuu-2015'
 
 # download a list of albums from a file
-~ $ khdownload -f albums.txt
+~ $ khdownload -f ace_attorney_albums.txt
 
-# save to a particular directory
-~ $ khdownload -f albums.txt -o /path/to/some/dir
+# save all the given albums in another directory
+~ $ khdownload -f ace_attorney_albums.txt -o '/mnt/media/soundtracks/Ace Attorney Sountracks'
 ```
