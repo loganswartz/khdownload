@@ -100,12 +100,18 @@ class Song(object):
     @property
     def best_file(self):
         ordered = sorted(self.files)
-        chosen = ordered[0]
-        return chosen
+        try:
+            chosen = ordered[0]
+            return chosen
+        except IndexError:
+            return None
 
     @property
     def best_type(self):
-        return self.best_file.type
+        if self.best_file:
+            return self.best_file.type
+        else:
+            return None
 
     def download(
         self,
@@ -118,10 +124,13 @@ class Song(object):
         else:
             file = self.best_file
 
-        path = file.download(folder, hide_progress=hide_progress)
-        self.local = path
+        if file:
+            path = file.download(folder, hide_progress=hide_progress)
+            self.local = path
+            return path
 
-        return path
+        log.info(f"{self.name} was skipped as no downloads were found.")
+        return None
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {repr(self.name)}>"
@@ -141,10 +150,17 @@ class Album(object):
         return [Song(url) for url in self.song_links]
 
     def download(
-        self, folder: pathlib.Path = None, type: str = None, hide_progress=False
+        self,
+        folder: pathlib.Path = None,
+        parent: pathlib.Path = None,
+        type: str = None,
+        hide_progress: bool = False,
     ):
         if folder is None:
             folder = pathlib.Path(self.title)
+
+        if parent is not None:
+            folder = parent / folder
 
         if not folder.exists():
             folder.mkdir()
@@ -163,6 +179,7 @@ class Album(object):
             }
 
             for song in tqdm(self.songs, disable=hide_progress, **opts):
+                song: Song
                 result = song.download(folder, type=type)
                 if result is not None:
                     results[result] = song

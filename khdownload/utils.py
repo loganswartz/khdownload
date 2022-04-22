@@ -64,7 +64,12 @@ def check_disposition_filename(resp: requests.Response):
     return None
 
 
-def convert_files(files: Collection[pathlib.Path], filetype: str, delete=True):
+def convert_files(
+    files: Collection[pathlib.Path],
+    filetype: str,
+    delete=True,
+    only: Collection[str] = None,
+):
     """
     Convert a batch of files to a given filetype.
 
@@ -83,6 +88,7 @@ def convert_files(files: Collection[pathlib.Path], filetype: str, delete=True):
     tasks = {
         file: subprocess.Popen(build_cmd(file), text=True, stdout=PIPE, stderr=PIPE)
         for file in files
+        if only is None or file.suffix in only
     }
 
     for file, task in tasks.items():

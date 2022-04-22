@@ -47,7 +47,7 @@ def cli(urls, list_file, output, type, convert_m4a):
     urls = set(urls)
     if list_file:
         urls = urls.union(
-            {url.strip() for url in list_file.splitlines() if url.strip()}
+            {url.strip() for url in list_file.read().splitlines() if url.strip()}
         )
     if not urls:
         print("Please specify a URL.")
@@ -55,9 +55,9 @@ def cli(urls, list_file, output, type, convert_m4a):
 
     for url in urls:
         album = Album(url)
-        succeeded, failed = album.download(folder=output, type=type)
+        succeeded, failed = album.download(parent=output, type=type)
         if convert_m4a:
-            results = convert_files(succeeded, ".flac")
+            results = convert_files(succeeded, ".flac", only=[".m4a"])
 
         if failed:
             log.error("Some songs failed to download:")
